@@ -1,5 +1,7 @@
 # Tetris
 
+BIOS color: https://en.wikipedia.org/wiki/BIOS_color_attributes
+
 * [ ] graphic mode 320x200, 256 colors
 * [ ] random generated blocks and go up
 * [ ] key movement
