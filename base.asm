@@ -5,6 +5,7 @@ STACK ENDS
 MYDATA SEGMENT PARA 'DATA'
   DB 64 DUP('MYSTACK')
   WAIT_TIME DW 1
+  matrix DB 150 DUP(0), '$' ; game matrix
 MYDATA ENDS
 
 MYCODE SEGMENT PARA 'CODE' ; define the code segment
@@ -75,6 +76,7 @@ moveUP PROC NEAR
 moveUP ENDP
 
 DELAY PROC
+  push ax
   push dx
   push cx
 
@@ -88,6 +90,7 @@ DELAY PROC
 
   pop cx
   pop dx
+  pop ax
 RET
 DELAY ENDP
 
