@@ -8,17 +8,28 @@ MYDATA SEGMENT PARA 'DATA'
   ; game matrix 320x200 divived by 20px for each blocks gives us 16x10 but we
   ; want the last row to have information so it's 16x9 = 144
   matrix DB 144 DUP(0), '$'
-  matrixSize DW 143, '$' ; 143 because it starts at 0
-  matrixIndex DB 0, '$'
-  ; declare the pieces
+  matrixIndexLength DW 143, '$' ; 143 because it starts at 0
+  matrixLineLength DB 16, '$'
+
+  draw DW ?, '$'
+  drawIndex DB 0, '$'
+  drawIndexLength DW 0, '$'
+  drawLineLength DB 0, '$'
+
+  CurrentBlock_X DW 0, '$'
+  CurrentBlock_Y DW 0, '$'
+
+  ; declare the matrix pieces
   ; every piece is 4x2
   pieceLineFour DB 0, 0, 0, 0, 1, 1, 1, 1, '$'
   pieceLineTwo  DB 0, 0, 0, 0, 0, 1, 1, 0, '$'
   pieceLUp      DB 1, 0, 0, 0, 1, 1, 1, 0, '$'
   pieceLDown    DB 1, 1, 1, 0, 1, 0, 0, 0, '$'
   pieceZ        DB 1, 1, 0, 0, 0, 1, 1, 0, '$'
-  CurrentBlock_X DW 0, '$'
-  CurrentBlock_Y DW 0, '$'
+  
+  currentPiece  DB ?, '$'
+  currentPieceX  DB 0, '$'
+  currentPieceY  DB 0, '$'
 MYDATA ENDS
 
 MYCODE SEGMENT PARA 'CODE' ; define the code segment
@@ -51,8 +62,23 @@ MYPROC PROC FAR ; name of the procedure MYPROC
   MOV BL, 1
   MOV matrix[68], BL
 
-  ; ---- print the elements of matrix
-  CALL printMatrix
+  ; ---- draw the elements of background matrix
+  MOV AX, offset matrix ; get address of matrix 
+  MOV draw, AX
+  MOV AX, matrixIndexLength ; size of the matrix
+  MOV drawIndexLength, AX
+  MOV AL, matrixLineLength ; size for each line of the matrix
+  MOV drawLineLength, AL
+  CALL drawMatrix
+
+  ; ---- draw the elements of a piece matrix
+  MOV currentPieceX, 5
+  MOV currentPieceY, 5
+  MOV AX, offset pieceZ
+  MOV draw, AX
+  MOV drawIndexLength, 7
+  MOV drawLineLength, 4
+  CALL drawMatrix
 
   ; ---- waits for a key to end it
   MOV AH, 01
@@ -66,8 +92,11 @@ MYPROC PROC FAR ; name of the procedure MYPROC
   RET ; return the control to DOS
 MYPROC ENDP ; end of the procedure MYPROC
 
-; ---- procedure to print all elements of the matrix
-printMatrix PROC NEAR
+; ---- procedure to draw the elements of the a specified matrix
+drawMatrix PROC NEAR
+
+MOV SI, 0
+
   matrix_loop:
   ; get coordinates
   ; get width and height based on the index
@@ -76,8 +105,8 @@ printMatrix PROC NEAR
   xor cx, cx
   xor dx, dx
 
-  mov al, matrixIndex
-  mov bl, 16
+  mov al, drawIndex
+  mov bl, drawLineLength
   div bl ; bx bl
   mov cl, ah ; width
   mov dl, al ; height
@@ -92,30 +121,36 @@ printMatrix PROC NEAR
   mov CurrentBlock_X, ax
 
   ; print block
-  mov bl, matrix[SI]
-  cmp bl, 0
-  je matrix_loop_UpdateIndex
+  mov di, draw
+  add di, si
+  mov bl, [di]
+  cmp bl, 1
+  jne matrix_loop_UpdateIndex
   call printBlock
 
   ; update index
-  matrix_loop_UpdateIndex: xor ax, ax
+  matrix_loop_UpdateIndex:
+  xor ax, ax
   xor bx, bx
   xor cx, cx
   xor dx, dx
-  mov al, matrixIndex
+  mov al, drawIndex
   inc al
-  mov matrixIndex, al
-  inc SI
+  mov drawIndex, al
+  inc si
 
   ; check if finished
-  mov bx, matrixSize
+  mov bx, drawIndexLength
   cmp ax, bx
   jle matrix_loop
 
+  mov drawIndex, 0
+  mov drawIndexLength, 0
+  mov drawLineLength, 0
   RET
-printMatrix ENDP
+drawMatrix ENDP
 
-; ---- procedure that prints a defined block of width and height
+; ---- procedure that draws a defined block of width and height in specific coordinates
 printBlock PROC NEAR
 ; ---- display pixels
 mov dx, CurrentBlock_Y
