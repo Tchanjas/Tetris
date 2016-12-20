@@ -7,9 +7,9 @@ db 64 dup('mystack')
 wait_time dw 1
 ; game matrix 320x200 divived by 20px for each blocks gives us 16x10 but we
 ; want the last row to have information so it's 16x9 = 144
-matrix db 144 dup(0), '$'
-matrixindexlength dw 143, '$' ; 143 because it starts at 0
-matrixlinelength db 16, '$'
+matrix db 150 dup(0), '$'
+matrixindexlength dw 149, '$' ; 143 because it starts at 0
+matrixlinelength db 15, '$'
 
 draw dw ?, '$'
 drawindex db 0, '$'
@@ -112,7 +112,7 @@ matrix_loop:
 
 	; multiply to get the real coordinates
 	mov ax, dx
-	mov bx, 20
+	mov bx, 10
 	mul bx
 	mov currentblock_y, ax
 	mov ax, cx
@@ -152,13 +152,13 @@ drawmatrix endp
 ; ---- procedure that draws a defined block of width and height in specific coordinates
 printblock proc near
 	; ---- display pixels
-	add currentblock_y, 20
+	add currentblock_y, 10
 	mov dx, currentblock_y
-	sub dx, 20
+	sub dx, 10
 
-	add currentblock_x, 20
+	add currentblock_x, 10
 	mov cx, currentblock_x
-	sub cx, 20
+	sub cx, 10
 
 	mov al, 03 ; green
 	mov ah, 12 ; config int10h to the pixel plot
@@ -170,7 +170,7 @@ drawColumn:
 	cmp cx, currentblock_x
 	jb drawColumn
 
-	sub cx, 20 ; starting x coordinate of current block
+	sub cx, 10 ; starting x coordinate of current block
 	inc dx ; new line
 	cmp dx, currentblock_y
 	jb drawColumn
