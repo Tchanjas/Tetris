@@ -33,7 +33,11 @@ piecez        db 1, 1, 0, 0, 0, 1, 1, 0, '$'
 piece_x_length  dw 4, '$' ; width
 piece_y_length  dw 2, '$' ; height
 piece_x dw 5, '$' ; x coordinate
-piece_y dw 5, '$' ; y coordinate
+piece_y dw 10, '$' ; y coordinate
+
+
+piece_count db 0, '$'
+
 
 ; declare our variables for the generic draw procedure
 draw_address dw ?, '$'
@@ -85,31 +89,10 @@ myproc proc far ; name of the procedure myproc
   	int 21h
 
 	; ---- draw the game matrix
-	mov ax, offset matrix ; address of the matrix
-	mov draw_address, ax
-	mov ax, matrix_x ; x coordinate
-	mov draw_x, ax
-	mov ax, matrix_y ; y coordinate
-	mov draw_y, ax
-	mov ax, matrix_y_length ; height of the matrix
-	mov draw_y_length, ax
-	mov ax, matrix_x_length ; width of the matrix
-	mov draw_x_length, ax
-	call draw
+	
 
-	; ---- draw a random piece
-	call randompiece
-	mov draw_address, ax
-	mov ax, piece_x ; x coordinate
-	mov draw_x, ax
-	mov ax, piece_y ; y coordinate
-	mov draw_y, ax
-	mov ax, piece_y_length ; height of the matrix
-	mov draw_y_length, ax
-	mov ax, piece_x_length ; width of the matrix
-	mov draw_x_length, ax
-	call draw
-	call move_up
+	; ---- generate one piece at a time and move them
+	call piece_generator
 
 	; ---- waits for a key to end it
 	mov ah, 01
@@ -231,10 +214,15 @@ randompiece proc near
 	push bx
 	push cx
 	push dx
+	xor ax, ax
 	; --- system time cx:dx
 	mov ah, 00h
 	int 1ah
+	add dx, 0Fh
 	mov ax, dx
+	mul ax
+	mov al, ah
+	mov ah, al
 	xor dx, dx
 	mov cx, 5 
 	div cx
@@ -273,7 +261,6 @@ exit:
 	ret
 randompiece endp
 
-
 ; --- move a piece up
 move_up proc near
 move_up_loop:
@@ -311,6 +298,36 @@ move_up_loop:
    	ret
 move_up endp
 
+; ---- generate one piece at a time and move them
+piece_generator proc near
+piece_generator_loop:	
+	; ---- draw a random piece
+	call randompiece
+	mov draw_address, ax
+	mov ax, piece_x ; x coordinate
+	mov draw_x, ax
+	mov ax, piece_y ; y coordinate
+	mov draw_y, ax
+	mov ax, piece_y_length ; height of the matrix
+	mov draw_y_length, ax
+	mov ax, piece_x_length ; width of the matrix
+	mov draw_x_length, ax
+	call draw
+	call move_up
+
+	mov piece_x_length, 4
+	mov piece_y_length, 2
+	mov piece_x, 5
+	mov piece_y, 10
+
+	mov bl, piece_count
+	inc bl
+	mov piece_count, bl
+	cmp bl, 3
+	jl piece_generator_loop
+	ret
+piece_generator endp
+
 ; --- delay procedure
 delay proc near
 	push dx
@@ -321,7 +338,7 @@ timer:
 	int 1ah
 	cmp dx, wait_time
 	jb timer
-	add dx, 3 ; 1-18, where smaller is faster and 18 is close to 1 second
+	add dx, 6 ; 1-18, where smaller is faster and 18 is close to 1 second
 	mov wait_time,dx
 	
 	pop cx
