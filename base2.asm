@@ -19,8 +19,8 @@ msg_sec_num DB 0, '$'
 matrix db 150 dup(0), '$'
 matrix_x_length dw 10, '$' ; width
 matrix_y_length dw 15, '$' ; height
-matrix_x dw 0, '$' ; x coordinate
-matrix_y dw 0, '$' ; y coordinate
+matrix_x dw 10, '$' ; x coordinate
+matrix_y dw 10, '$' ; y coordinate
 
 ; declare the matrix pieces
 ; every piece is 4x2
@@ -80,7 +80,7 @@ myproc proc far ; name of the procedure myproc
 
 	; ---- title of the game
 	mov dl, 15 ; x
-	mov dh, 0 ; y
+	mov dh, 1 ; y
 	mov ah, 02h ; move cursor to the right place
 	mov bh, 0 ; video page 0
 	int 10h
@@ -89,7 +89,20 @@ myproc proc far ; name of the procedure myproc
   	int 21h
 
 	; ---- draw the game matrix
-	
+	mov ax, offset matrix ; address of the matrix
+	mov draw_address, ax
+	mov ax, matrix_x ; x coordinate
+	mov draw_x, ax
+	mov ax, matrix_y ; y coordinate
+	mov draw_y, ax
+	mov ax, matrix_y_length ; height of the matrix
+	mov draw_y_length, ax
+	mov ax, matrix_x_length ; width of the matrix
+	mov draw_x_length, ax
+	call draw
+
+	; ---- draw the game matrix border
+	call draw_matrix_border
 
 	; ---- generate one piece at a time and move them
 	call piece_generator
@@ -293,8 +306,8 @@ move_up_loop:
 	call delay
 
 	mov ax, draw_y
-	cmp ax, 1
-    jge move_up_loop
+	cmp ax, matrix_y
+    jg move_up_loop
    	ret
 move_up endp
 
@@ -323,7 +336,7 @@ piece_generator_loop:
 	mov bl, piece_count
 	inc bl
 	mov piece_count, bl
-	cmp bl, 3
+	cmp bl, 2
 	jl piece_generator_loop
 	ret
 piece_generator endp
@@ -345,6 +358,51 @@ timer:
 	pop dx
 	ret
 delay endp
+
+draw_matrix_border proc near
+	mov cx, matrix_x
+	mov dx, matrix_y
+
+draw_matrix_border_loop_top: 
+	mov al, color
+	mov ah, 12 ; config int10h to the pixel plot
+	int 10h
+	inc cx
+	mov bx, 100
+	add bx, matrix_x
+	cmp cx, bx
+	jl draw_matrix_border_loop_top
+
+draw_matrix_border_loop_right: 
+	mov al, color
+	mov ah, 12 ; config int10h to the pixel plot
+	int 10h
+	inc dx
+	mov bx, 150
+	add bx, matrix_y
+	cmp dx, bx
+	jl draw_matrix_border_loop_right
+
+draw_matrix_border_loop_bottom: 
+	mov al, color
+	mov ah, 12 ; config int10h to the pixel plot
+	int 10h
+	dec cx
+	mov bx, matrix_x
+	cmp cx, bx
+	jg draw_matrix_border_loop_bottom
+
+draw_matrix_border_loop_left: 
+	mov al, color
+	mov ah, 12 ; config int10h to the pixel plot
+	int 10h
+	dec dx
+	mov bx, matrix_y
+	cmp dx, bx
+	jg draw_matrix_border_loop_left
+
+	ret
+draw_matrix_border endp
 
 mycode ends ; end of the code segment
 end ; end of the program
