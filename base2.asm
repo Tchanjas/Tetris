@@ -36,6 +36,8 @@ draw_y dw 0, '$'
 draw_block_x dw 0, '$'
 draw_block_y dw 0, '$'
 
+color db 3, '$' ; green
+
 mydata ends
 
 mycode segment para 'code' ; define the code segment
@@ -82,13 +84,14 @@ assume cs:mycode, ds:mydata, ss:stack
 	mov draw_address, ax
 	mov ax, piece_x ; x coordinate
 	mov draw_x, ax
-	mov ax, piece_x ; y coordinate
+	mov ax, piece_y ; y coordinate
 	mov draw_y, ax
 	mov ax, piece_y_length ; height of the matrix
 	mov draw_y_length, ax
 	mov ax, piece_x_length ; width of the matrix
 	mov draw_x_length, ax
 	call draw
+	call move_up
 
 	; ---- waits for a key to end it
 	mov ah, 01
@@ -185,7 +188,7 @@ printblock proc near
 	mov cx, draw_block_x
 	add draw_block_x, 10
 
-	mov al, 03 ; green
+	mov al, color
 	mov ah, 12 ; config int10h to the pixel plot
 
 ; draw each pixel
@@ -251,6 +254,44 @@ exit:
 	pop bx
 	ret
 randompiece endp
+
+
+; --- move a piece up
+move_up proc near
+move_up_loop:
+	mov color, 2
+	mov ax, piece_x ; x coordinate
+	mov draw_x, ax
+	mov ax, piece_y ; y coordinate
+	mov draw_y, ax
+	mov ax, piece_y_length ; height of the matrix
+	mov draw_y_length, ax
+	mov ax, piece_x_length ; width of the matrix
+	mov draw_x_length, ax
+	call draw
+
+	mov color, 3
+	mov ax, piece_x ; x coordinate
+	mov draw_x, ax
+	mov ax, piece_y ; y coordinate
+	; -------------	
+	sub ax, 1
+	mov piece_y, ax
+	; -------------
+	mov draw_y, ax
+	mov ax, piece_y_length ; height of the matrix
+	mov draw_y_length, ax
+	mov ax, piece_x_length ; width of the matrix
+	mov draw_x_length, ax
+	call draw
+
+	call delay
+
+	mov ax, draw_y
+	cmp ax, 1
+    jge move_up_loop
+   	ret
+move_up endp
 
 ; --- delay procedure
 delay proc near
