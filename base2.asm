@@ -6,6 +6,14 @@ mydata segment para 'data'
 db 64 dup('mystack')
 wait_time dw 1
 
+msg_title DB 'up_tetris', '$'
+msg_lines_txt DB 'lines eliminated: ', '$'
+msg_lines_num DB 0, '$'
+msg_min_txt DB 'minutes: ', '$'
+msg_min_num DB 0, '$'
+msg_sec_txt DB 'seconds: ', '$'
+msg_sec_num DB 0, '$'
+
 ; game matrix is 10 columns and 15 lines
 ; that gives us 150 blocks with 10 pixels of width and height for each block
 matrix db 150 dup(0), '$'
@@ -42,7 +50,7 @@ mydata ends
 
 mycode segment para 'code' ; define the code segment
 myproc proc far ; name of the procedure myproc
-assume cs:mycode, ds:mydata, ss:stack
+	assume cs:mycode, ds:mydata, ss:stack
 	push ds ; store in the stack the segment ds
 	xor ax, ax ; guarantee zero in ax
 	push ax ; store zero in the stack
@@ -65,6 +73,16 @@ assume cs:mycode, ds:mydata, ss:stack
 	mov bh, 01 ; initialize the foreground color
 	mov bl, 06 ; red, black and green
 	int 10h
+
+	; ---- title of the game
+	mov dl, 15 ; x
+	mov dh, 0 ; y
+	mov ah, 02h ; move cursor to the right place
+	mov bh, 0 ; video page 0
+	int 10h
+	mov dx, offset msg_title
+	MOV ah, 09h ; display de strings
+  	int 21h
 
 	; ---- draw the game matrix
 	mov ax, offset matrix ; address of the matrix
