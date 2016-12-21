@@ -5,19 +5,14 @@ stack ends
 mydata segment para 'data'
 db 64 dup('mystack')
 wait_time dw 1
-; game matrix 320x200 divived by 20px for each blocks gives us 16x10 but we
-; want the last row to have information so it's 16x9 = 144
+
+; game matrix is 10 columns and 15 lines
+; that gives us 150 blocks with 10 pixels of width and height for each block
 matrix db 150 dup(0), '$'
-matrixindexlength dw 149, '$' ; 143 because it starts at 0
-matrixlinelength db 15, '$'
-
-draw dw ?, '$'
-drawindex db 0, '$'
-drawindexlength dw 0, '$'
-drawlinelength db 0, '$'
-
-currentblock_x dw 0, '$'
-currentblock_y dw 0, '$'
+matrix_x_length dw 10, '$' ; width
+matrix_y_length dw 15, '$' ; height
+matrix_x dw 0, '$' ; x coordinate
+matrix_y dw 0, '$' ; y coordinate
 
 ; declare the matrix pieces
 ; every piece is 4x2
@@ -26,10 +21,21 @@ piecelinetwo  db 1, 1, 0, 0, 0, 0, 0, 0, '$'
 piecelup      db 1, 0, 0, 0, 1, 1, 1, 0, '$'
 pieceldown    db 1, 1, 1, 0, 1, 0, 0, 0, '$'
 piecez        db 1, 1, 0, 0, 0, 1, 1, 0, '$'
+; declare piece coordinates and lengths
+piece_x_length  dw 4, '$' ; width
+piece_y_length  dw 2, '$' ; height
+piece_x dw 5, '$' ; x coordinate
+piece_y dw 5, '$' ; y coordinate
 
-currentpiece  db ?, '$'
-currentpiecex db 0, '$'
-currentpiecey db 0, '$'
+; declare our variables for the generic draw procedure
+draw_address dw ?, '$'
+draw_x_length dw 0, '$'
+draw_y_length dw 0, '$'
+draw_x dw 0, '$'
+draw_y dw 0, '$'
+draw_block_x dw 0, '$'
+draw_block_y dw 0, '$'
+
 mydata ends
 
 mycode segment para 'code' ; define the code segment
@@ -58,28 +64,31 @@ assume cs:mycode, ds:mydata, ss:stack
 	mov bl, 06 ; red, black and green
 	int 10h
 
-	; change a element in the matrix just so we can test if it works
-	;mov bl, 1
-	;mov matrix[68], bl
+	; ---- draw the game matrix
+	mov ax, offset matrix ; address of the matrix
+	mov draw_address, ax
+	mov ax, matrix_x ; x coordinate
+	mov draw_x, ax
+	mov ax, matrix_y ; y coordinate
+	mov draw_y, ax
+	mov ax, matrix_y_length ; height of the matrix
+	mov draw_y_length, ax
+	mov ax, matrix_x_length ; width of the matrix
+	mov draw_x_length, ax
+	call draw
 
-	; ---- draw the elements of background matrix
-	mov ax, offset matrix ; get address of matrix 
-	mov draw, ax
-	mov ax, matrixindexlength ; size of the matrix
-	mov drawindexlength, ax
-	mov al, matrixlinelength ; size for each line of the matrix
-	mov drawlinelength, al
-	call drawmatrix
-
-	; ---- draw the elements of a piece matrix
-	;mov currentpiecex, 5
-	;mov currentpiecey, 5
-
+	; ---- draw a random piece
 	call randompiece
-	mov draw, ax
-	mov drawindexlength, 7
-	mov drawlinelength, 4
-	call drawmatrix
+	mov draw_address, ax
+	mov ax, piece_x ; x coordinate
+	mov draw_x, ax
+	mov ax, piece_x ; y coordinate
+	mov draw_y, ax
+	mov ax, piece_y_length ; height of the matrix
+	mov draw_y_length, ax
+	mov ax, piece_x_length ; width of the matrix
+	mov draw_x_length, ax
+	call draw
 
 	; ---- waits for a key to end it
 	mov ah, 01
@@ -93,88 +102,107 @@ assume cs:mycode, ds:mydata, ss:stack
 	ret ; return the control to dos
 myproc endp ; end of the procedure myproc
 
-; ---- procedure to draw the elements of the a specified matrix
-drawmatrix proc near
+; ---- generic procedure to draw a specified matrix object
+draw proc near
 	xor si, si
-matrix_loop:
-	; get coordinates
-	; get width and height based on the index
 	xor ax, ax
 	xor bx, bx
 	xor cx, cx
 	xor dx, dx
 
-	mov al, drawindex
-	mov bl, drawlinelength
-	div bl ; bx bl
-	mov cl, ah ; width
-	mov dl, al ; height
-
-	; multiply to get the real coordinates
-	mov ax, dx
+	; get the real coordinates and put the length on the current coordinates
 	mov bx, 10
-	mul bx
-	mov currentblock_y, ax
+	; x and width
+	mov cx, draw_x ; get the real x coordinate
 	mov ax, cx
 	mul bx
-	mov currentblock_x, ax
+	mov draw_block_x, ax
+	mov draw_x, ax
+	mov ax, draw_x_length ; get the real width
+	mul bx
+	add ax, draw_x
+	mov draw_x_length, ax
+	; y and height
+	mov cx, draw_y ; get the real x coordinate
+	mov ax, cx
+	mul bx
+	mov draw_block_y, ax
+	mov draw_y, ax
+	mov ax, draw_y_length ; get the real height
+	mul bx
+	add ax, draw_y
+	mov draw_y_length, ax
 
-	; print block
-	mov di, draw
+; draw block
+draw_loop:
+	mov di, draw_address
 	add di, si
 	mov bl, [di]
 	cmp bl, 1
-	jne matrix_loop_updateindex
+	jne draw_update
 	call printblock
 
-	; update index
-matrix_loop_updateindex:
+; update index
+draw_update:
 	xor ax, ax
 	xor bx, bx
 	xor cx, cx
 	xor dx, dx
-	mov al, drawindex
-	inc al
-	mov drawindex, al
+	; increment x
+	mov ax, draw_block_x
+	add ax, 10
+	mov draw_block_x, ax
 	inc si
+	; check if x is out of bounds
+	cmp ax, draw_x_length
+	jl draw_continue
+	; moves the x to the initial position
+	; and increments the y
+	mov cx, draw_x
+	mov draw_block_x, cx
+	mov bx, draw_block_y
+	add bx, 10
+	mov draw_block_y, bx
 
-	; check if finished
-	mov bx, drawindexlength
+; check if y is out of bounds
+; if true then end the procedure
+draw_continue:
+	xor ax, ax
+	xor bx, bx
+	mov ax, draw_block_y
+	mov bx, draw_y_length
 	cmp ax, bx
-	jle matrix_loop
-
-	mov drawindex, 0
-	mov drawindexlength, 0
-	mov drawlinelength, 0
+	jl draw_loop
 	ret
-drawmatrix endp
+draw endp
 
-; ---- procedure that draws a defined block of width and height in specific coordinates
+; ---- procedure that draws a block of 10 pixels width and height in specific coordinates
 printblock proc near
-	; ---- display pixels
-	add currentblock_y, 10
-	mov dx, currentblock_y
-	sub dx, 10
+	; get the limit of width and height
+	mov dx, draw_block_y
+	add draw_block_y, 10
 
-	add currentblock_x, 10
-	mov cx, currentblock_x
-	sub cx, 10
+	mov cx, draw_block_x
+	add draw_block_x, 10
 
 	mov al, 03 ; green
 	mov ah, 12 ; config int10h to the pixel plot
 
-	; ---- start drawing block
+; draw each pixel
 drawColumn:
 	int 10h
 	inc cx
-	cmp cx, currentblock_x
+	cmp cx, draw_block_x
 	jb drawColumn
 
 	sub cx, 10 ; starting x coordinate of current block
 	inc dx ; new line
-	cmp dx, currentblock_y
+	cmp dx, draw_block_y
 	jb drawColumn
-	ret  
+
+	sub draw_block_x, 10
+	sub draw_block_y, 10
+	ret
 printblock endp
 
 ; --- selects a piece at random using system clock ticks
@@ -224,16 +252,19 @@ exit:
 	ret
 randompiece endp
 
+; --- delay procedure
 delay proc near
 	push dx
 	push cx
-	timer:
+	
+timer:
 	mov ah, 00h
 	int 1ah
-	cmp dx,wait_time
+	cmp dx, wait_time
 	jb timer
-	add dx,3         ;1-18, where smaller is faster and 18 is close to 1 second
+	add dx, 3 ; 1-18, where smaller is faster and 18 is close to 1 second
 	mov wait_time,dx
+	
 	pop cx
 	pop dx
 	ret
