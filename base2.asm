@@ -291,8 +291,8 @@ move_up_loop:
 	mov color, 3
 	mov ax, piece_x ; x coordinate
 	mov draw_x, ax
-	mov ax, piece_y ; y coordinate
 	; -------------	
+	mov ax, piece_y ; y coordinate
 	sub ax, 1
 	mov piece_y, ax
 	; -------------
@@ -311,7 +311,7 @@ move_up_loop:
    	ret
 move_up endp
 
-; ---- generate one piece at a time and move them
+; ---- generate one piece at a time, move them up and put them in the matrix
 piece_generator proc near
 piece_generator_loop:	
 	; ---- draw a random piece
@@ -327,6 +327,7 @@ piece_generator_loop:
 	mov draw_x_length, ax
 	call draw
 	call move_up
+	call save_piece
 
 	mov piece_x_length, 4
 	mov piece_y_length, 2
@@ -336,10 +337,54 @@ piece_generator_loop:
 	mov bl, piece_count
 	inc bl
 	mov piece_count, bl
-	cmp bl, 2
+	cmp bl, 1
 	jl piece_generator_loop
 	ret
 piece_generator endp
+
+; ---- put the current piece in the matrix
+save_piece proc near
+	xor si, si
+	xor di, di
+	mov si, 0
+	mov di, 0
+	
+save_piece_loop:
+	mov ax, 9
+	mov bx, piece_y
+	sub bx, 1
+	mul bx
+	mov bx, piece_x
+	sub bx, 1
+	add ax, bx
+	add ax, si
+
+	mov cx, ax
+	mov bx, draw_address
+	add bx, di
+	mov ax, [bx]
+	mov bx, cx
+	mov matrix[bx], al
+
+	inc di
+	inc si
+
+	; if si is 3 means we will need to move y to +1
+	cmp si, 4
+	je save_piece_increaseY
+
+	cmp si, 13
+	jle save_piece_loop
+
+	ret
+
+; instead of adding +1 to y we can just add 7
+; which is the number of blocks to a new line
+; x length = 10, si = 4 => 10 - 4 = 6
+save_piece_increaseY: 
+	add si, 6
+	jmp save_piece_loop
+save_piece endp
 
 ; --- delay procedure
 delay proc near
