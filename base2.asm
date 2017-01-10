@@ -291,11 +291,13 @@ move_up_loop:
 	mov color, 3
 	mov ax, piece_x ; x coordinate
 	mov draw_x, ax
+	
 	; -------------	
-	mov ax, piece_y ; y coordinate
+	mov ax, piece_y
 	sub ax, 1
 	mov piece_y, ax
 	; -------------
+
 	mov draw_y, ax
 	mov ax, piece_y_length ; height of the matrix
 	mov draw_y_length, ax
@@ -305,9 +307,22 @@ move_up_loop:
 
 	call delay
 
+	mov ax, 9
+	mov bx, piece_y
+	sub bx, 2
+	mul bx
+	mov bx, piece_x
+	sub bx, 0
+	add ax, bx
+	mov bx, ax
+
+	cmp matrix[bx], 1
+	je move_up_hit
+
 	mov ax, draw_y
 	cmp ax, matrix_y
     jg move_up_loop
+move_up_hit:
    	ret
 move_up endp
 
@@ -337,7 +352,7 @@ piece_generator_loop:
 	mov bl, piece_count
 	inc bl
 	mov piece_count, bl
-	cmp bl, 1
+	cmp bl, 4
 	jl piece_generator_loop
 	ret
 piece_generator endp
@@ -350,6 +365,7 @@ save_piece proc near
 	mov di, 0
 	
 save_piece_loop:
+	; get matrix index depending on the current piece block
 	mov ax, 9
 	mov bx, piece_y
 	sub bx, 1
@@ -359,6 +375,7 @@ save_piece_loop:
 	add ax, bx
 	add ax, si
 
+	; mov the bit of current piece block to the matrix index
 	mov cx, ax
 	mov bx, draw_address
 	add bx, di
