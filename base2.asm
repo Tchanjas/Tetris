@@ -6,13 +6,15 @@ mydata segment para 'data'
 db 64 dup('mystack')
 wait_time dw 1
 
-msg_title DB 'up_tetris', '$'
-msg_lines_txt DB 'lines eliminated: ', '$'
-msg_lines_num DB 0, '$'
-msg_min_txt DB 'minutes: ', '$'
-msg_min_num DB 0, '$'
-msg_sec_txt DB 'seconds: ', '$'
-msg_sec_num DB 0, '$'
+msg_title db 'up_tetris', '$'
+msg_lines_txt db 'lines eliminated: ', '$'
+msg_lines_num db 0, '$'
+msg_min_txt db 'minutes: ', '$'
+msg_min_num db 0, '$'
+msg_sec_txt db 'seconds: ', '$'
+msg_sec_num db 0, '$'
+msg_paused db 'paused', '$'
+msg_clear db '      ', '$'
 
 ; game matrix is 10 columns and 15 lines
 ; that gives us 150 blocks with 10 pixels of width and height for each block
@@ -29,16 +31,14 @@ piecelinetwo  db 1, 1, 0, 0, 0, 0, 0, 0, '$'
 piecelup      db 1, 0, 0, 0, 1, 1, 1, 0, '$'
 pieceldown    db 1, 1, 1, 0, 1, 0, 0, 0, '$'
 piecez        db 1, 1, 0, 0, 0, 1, 1, 0, '$'
+erase					db 0, 0, 0, 0, 0, 0, 0, 0, '$'
 ; declare piece coordinates and lengths
 piece_x_length  dw 4, '$' ; width
 piece_y_length  dw 2, '$' ; height
 piece_x dw 5, '$' ; x coordinate
 piece_y dw 10, '$' ; y coordinate
 
-
 piece_count db 0, '$'
-
-
 ; declare our variables for the generic draw procedure
 draw_address dw ?, '$'
 draw_x_length dw 0, '$'
@@ -85,8 +85,8 @@ myproc proc far ; name of the procedure myproc
 	mov bh, 0 ; video page 0
 	int 10h
 	mov dx, offset msg_title
-	MOV ah, 09h ; display de strings
-  	int 21h
+	mov ah, 09h ; display de strings
+	int 21h
 
 	; ---- draw the game matrix
 	mov ax, offset matrix ; address of the matrix
@@ -103,9 +103,10 @@ myproc proc far ; name of the procedure myproc
 
 	; ---- draw the game matrix border
 	call draw_matrix_border
-
 	; ---- generate one piece at a time and move them
+;---------------------------------------------
 	call piece_generator
+;---------------------------------------------
 
 	; ---- waits for a key to end it
 	mov ah, 01
@@ -118,6 +119,48 @@ myproc proc far ; name of the procedure myproc
 
 	ret ; return the control to dos
 myproc endp ; end of the procedure myproc
+
+;--------------------------------------
+;	PROCS
+;--------------------------------------
+pause proc near
+	push ax
+
+	mov dl, 15
+	mov dh, 3
+	mov ah, 02h
+	mov bh, 0
+	int 10h
+	lea dx, msg_paused
+	mov ah, 09h
+	int 21h
+
+listen_unpause:
+	mov ah,01h
+	int 16h
+	jnz check_unpause
+	jmp listen_unpause
+
+check_unpause:
+	mov ah, 00h
+	int 16h
+	cmp al, 'p' ; p- pause button
+	je exit_pause
+	jmp listen_unpause
+
+	exit_pause:
+	mov dl, 15
+	mov dh, 3
+	mov ah, 02h
+	mov bh, 0
+	int 10h
+	lea dx, msg_clear
+	mov ah, 09h
+	int 21h
+
+	pop ax
+	ret
+pause endp
 
 ; ---- generic procedure to draw a specified matrix object
 draw proc near
@@ -157,6 +200,7 @@ draw_loop:
 	mov bl, [di]
 	cmp bl, 1
 	jne draw_update
+
 	call printblock
 
 ; update index
@@ -198,7 +242,6 @@ printblock proc near
 	; get the limit of width and height
 	mov dx, draw_block_y
 	add draw_block_y, 10
-
 	mov cx, draw_block_x
 	add draw_block_x, 10
 
@@ -206,16 +249,16 @@ printblock proc near
 	mov ah, 12 ; config int10h to the pixel plot
 
 ; draw each pixel
-drawColumn:
+drawcolumn:
 	int 10h
 	inc cx
 	cmp cx, draw_block_x
-	jb drawColumn
+	jb drawcolumn
 
 	sub cx, 10 ; starting x coordinate of current block
 	inc dx ; new line
 	cmp dx, draw_block_y
-	jb drawColumn
+	jb drawcolumn
 
 	sub draw_block_x, 10
 	sub draw_block_y, 10
@@ -231,13 +274,15 @@ randompiece proc near
 	; --- system time cx:dx
 	mov ah, 00h
 	int 1ah
-	add dx, 0Fh
+	;we used a middle-square method to generate pseudorandom numbers
+	add dx, 0fh
 	mov ax, dx
 	mul ax
-	mov al, ah
-	mov ah, al
+	mov bl, ah
+	mov bh, al
+	mov ax, bx
 	xor dx, dx
-	mov cx, 5 
+	mov cx, 5
 	div cx
 
 	cmp dx, 0
@@ -291,8 +336,8 @@ move_up_loop:
 	mov color, 3
 	mov ax, piece_x ; x coordinate
 	mov draw_x, ax
-	
-	; -------------	
+
+	; -------------
 	mov ax, piece_y
 	sub ax, 1
 	mov piece_y, ax
@@ -312,7 +357,7 @@ move_up_loop:
 	sub bx, 2
 	mul bx
 	mov bx, piece_x
-	sub bx, 0
+
 	add ax, bx
 	mov bx, ax
 
@@ -321,14 +366,14 @@ move_up_loop:
 
 	mov ax, draw_y
 	cmp ax, matrix_y
-    jg move_up_loop
+  jg move_up_loop
 move_up_hit:
-   	ret
+  ret
 move_up endp
 
 ; ---- generate one piece at a time, move them up and put them in the matrix
 piece_generator proc near
-piece_generator_loop:	
+piece_generator_loop:
 	; ---- draw a random piece
 	call randompiece
 	mov draw_address, ax
@@ -361,9 +406,7 @@ piece_generator endp
 save_piece proc near
 	xor si, si
 	xor di, di
-	mov si, 0
-	mov di, 0
-	
+
 save_piece_loop:
 	; get matrix index depending on the current piece block
 	mov ax, 9
@@ -388,7 +431,7 @@ save_piece_loop:
 
 	; if si is 3 means we will need to move y to +1
 	cmp si, 4
-	je save_piece_increaseY
+	je save_piece_increasey
 
 	cmp si, 13
 	jle save_piece_loop
@@ -398,7 +441,7 @@ save_piece_loop:
 ; instead of adding +1 to y we can just add 7
 ; which is the number of blocks to a new line
 ; x length = 10, si = 4 => 10 - 4 = 6
-save_piece_increaseY: 
+save_piece_increasey:
 	add si, 6
 	jmp save_piece_loop
 save_piece endp
@@ -407,7 +450,7 @@ save_piece endp
 delay proc near
 	push dx
 	push cx
-	
+
 timer:
 	mov ah, 00h
 	int 1ah
@@ -415,7 +458,25 @@ timer:
 	jb timer
 	add dx, 6 ; 1-18, where smaller is faster and 18 is close to 1 second
 	mov wait_time,dx
-	
+
+listen_keys:
+	mov ah,01h
+	int 16h
+	jnz check_key
+	jmp stop_delay
+
+call_pause:
+	call pause
+	jmp listen_keys
+
+check_key:
+	mov ah, 00h
+	int 16h
+	cmp al, 'p'
+	je call_pause
+	jmp listen_keys
+
+stop_delay:
 	pop cx
 	pop dx
 	ret
@@ -425,7 +486,7 @@ draw_matrix_border proc near
 	mov cx, matrix_x
 	mov dx, matrix_y
 
-draw_matrix_border_loop_top: 
+draw_matrix_border_loop_top:
 	mov al, color
 	mov ah, 12 ; config int10h to the pixel plot
 	int 10h
@@ -435,7 +496,7 @@ draw_matrix_border_loop_top:
 	cmp cx, bx
 	jl draw_matrix_border_loop_top
 
-draw_matrix_border_loop_right: 
+draw_matrix_border_loop_right:
 	mov al, color
 	mov ah, 12 ; config int10h to the pixel plot
 	int 10h
@@ -445,7 +506,7 @@ draw_matrix_border_loop_right:
 	cmp dx, bx
 	jl draw_matrix_border_loop_right
 
-draw_matrix_border_loop_bottom: 
+draw_matrix_border_loop_bottom:
 	mov al, color
 	mov ah, 12 ; config int10h to the pixel plot
 	int 10h
@@ -454,7 +515,7 @@ draw_matrix_border_loop_bottom:
 	cmp cx, bx
 	jg draw_matrix_border_loop_bottom
 
-draw_matrix_border_loop_left: 
+draw_matrix_border_loop_left:
 	mov al, color
 	mov ah, 12 ; config int10h to the pixel plot
 	int 10h
