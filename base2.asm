@@ -31,12 +31,12 @@ piecelinetwo  db 1, 1, 0, 0, 0, 0, 0, 0, '$'
 piecelup      db 1, 0, 0, 0, 1, 1, 1, 0, '$'
 pieceldown    db 1, 1, 1, 0, 1, 0, 0, 0, '$'
 piecez        db 1, 1, 0, 0, 0, 1, 1, 0, '$'
-erase					db 0, 0, 0, 0, 0, 0, 0, 0, '$'
+
 ; declare piece coordinates and lengths
 piece_x_length  dw 4, '$' ; width
 piece_y_length  dw 2, '$' ; height
 piece_x dw 5, '$' ; x coordinate
-piece_y dw 10, '$' ; y coordinate
+piece_y dw 14, '$' ; y coordinate
 
 piece_count db 0, '$'
 ; declare our variables for the generic draw procedure
@@ -349,7 +349,6 @@ move_up_loop:
 	mov ax, piece_x_length ; width of the matrix
 	mov draw_x_length, ax
 	call draw
-
 	call delay
 
 	mov ax, 9
@@ -392,12 +391,12 @@ piece_generator_loop:
 	mov piece_x_length, 4
 	mov piece_y_length, 2
 	mov piece_x, 5
-	mov piece_y, 10
+	mov piece_y, 14
 
 	mov bl, piece_count
 	inc bl
 	mov piece_count, bl
-	cmp bl, 4
+	cmp bl, 20
 	jl piece_generator_loop
 	ret
 piece_generator endp
@@ -435,7 +434,6 @@ save_piece_loop:
 
 	cmp si, 13
 	jle save_piece_loop
-
 	ret
 
 ; instead of adding +1 to y we can just add 7
@@ -456,8 +454,39 @@ timer:
 	int 1ah
 	cmp dx, wait_time
 	jb timer
-	add dx, 6 ; 1-18, where smaller is faster and 18 is close to 1 second
+	add dx, 18 ; 1-18, where smaller is faster and 18 is close to 1 second
 	mov wait_time,dx
+
+	inc msg_sec_num
+	cmp msg_sec_num, 60
+	je somaMin
+
+printClock:
+	mov dl, 15
+	mov dh, 4
+	mov ah, 02h
+	mov bh, 0
+	int 10h
+
+	lea dx, msg_min_txt
+	mov ah, 09h
+	int 21h
+	xor ax, ax
+	mov al, msg_min_num
+	call convertNum
+
+	mov dl, 15
+	mov dh, 5
+	mov ah, 02h
+	mov bh, 0
+	int 10h
+
+	lea dx, msg_sec_txt
+	mov ah, 09h
+	int 21h
+	xor ax,ax
+	mov al, msg_sec_num
+	call convertNum
 
 listen_keys:
 	mov ah,01h
@@ -476,11 +505,51 @@ check_key:
 	je call_pause
 	jmp listen_keys
 
+somaMin:
+	mov msg_sec_num, 0
+	inc msg_min_num
+	cmp msg_min_num, 60
+	je resetTimer
+	jmp printClock
+
+resetTimer:
+	mov msg_min_num, 0
+	jmp printClock
+
 stop_delay:
 	pop cx
 	pop dx
 	ret
 delay endp
+
+convertNum proc near
+	push dx
+	push cx
+	push bx
+
+	xor cx,cx
+	mov bx, 10
+
+dispx1:
+	xor dx,dx
+	div bx
+	push dx
+	inc cx
+	or ax,ax
+	jnz dispx1
+
+dispx2:
+	pop dx
+	mov ah, 6
+	add dl, 30h
+	int 21h
+	loop dispx2
+
+	pop bx
+	pop cx
+	pop dx
+	ret
+convertNum endp
 
 draw_matrix_border proc near
 	mov cx, matrix_x
