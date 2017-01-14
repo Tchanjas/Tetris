@@ -123,6 +123,8 @@ myproc endp ; end of the procedure myproc
 ;--------------------------------------
 ;	PROCS
 ;--------------------------------------
+
+; procedure to pause/unpause the game
 pause proc near
 	push ax
 
@@ -135,12 +137,14 @@ pause proc near
 	mov ah, 09h
 	int 21h
 
+; checks if there is a key in the buffer
 listen_unpause:
 	mov ah,01h
 	int 16h
 	jnz check_unpause
 	jmp listen_unpause
 
+; waits for 'p' in buffer
 check_unpause:
 	mov ah, 00h
 	int 16h
@@ -148,6 +152,7 @@ check_unpause:
 	je exit_pause
 	jmp listen_unpause
 
+	;remove paused message by print blank chars
 	exit_pause:
 	mov dl, 15
 	mov dh, 3
@@ -284,7 +289,7 @@ randompiece proc near
 	xor dx, dx
 	mov cx, 5
 	div cx
-
+	;dx will hold the remainder of the division
 	cmp dx, 0
 	je loadlinefour
 	cmp dx, 1
@@ -458,7 +463,7 @@ timer:
 	mov wait_time,dx
 
 	inc msg_sec_num
-	cmp msg_sec_num, 60
+	cmp msg_sec_num, 60; check if 60 seconds has passed
 	je somaMin
 
 printClock:
@@ -488,6 +493,7 @@ printClock:
 	mov al, msg_sec_num
 	call convertNum
 
+; listens for keyboard inputs
 listen_keys:
 	mov ah,01h
 	int 16h
@@ -501,10 +507,12 @@ call_pause:
 check_key:
 	mov ah, 00h
 	int 16h
-	cmp al, 'p'
+	cmp al, 'p' ; 'p' -> pause button
 	je call_pause
 	jmp listen_keys
 
+; if 60 seconds has passed, increase minute counter
+; and reset second counter
 somaMin:
 	mov msg_sec_num, 0
 	inc msg_min_num
@@ -512,6 +520,7 @@ somaMin:
 	je resetTimer
 	jmp printClock
 
+; reset minute counter to 0 case 60 min
 resetTimer:
 	mov msg_min_num, 0
 	jmp printClock
@@ -522,18 +531,22 @@ stop_delay:
 	ret
 delay endp
 
+; procedure to convert a numeric value on AX to ascii and print it
 convertNum proc near
 	push dx
 	push cx
 	push bx
 
 	xor cx,cx
+	; decimal base
 	mov bx, 10
 
 dispx1:
 	xor dx,dx
 	div bx
+	; remainder of division
 	push dx
+	; count remainders for later loop
 	inc cx
 	or ax,ax
 	jnz dispx1
@@ -541,6 +554,7 @@ dispx1:
 dispx2:
 	pop dx
 	mov ah, 6
+	; convert digit to ascii
 	add dl, 30h
 	int 21h
 	loop dispx2
