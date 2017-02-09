@@ -104,13 +104,9 @@ myproc proc far ; name of the procedure myproc
 	; ---- draw the game matrix border
 	call draw_matrix_border
 	; ---- generate one piece at a time and move them
-;---------------------------------------------
+	;---------------------------------------------
 	call piece_generator
-;---------------------------------------------
-
-	; ---- waits for a key to end it
-	mov ah, 01
-	int 21h
+	;---------------------------------------------
 
 	; ---- back to de text mode
 	mov ah, 00h ; define the graphic mode
@@ -512,17 +508,30 @@ call_move_right:
 	call move_right
 	jmp listen_keys
 
+call_end_game:
+	; ---- back to de text mode
+	mov ah, 00h ; define the graphic mode
+	mov al, 02h ; text mode 80x25
+	int 10h
+
+	xor ax, ax
+	mov ah, 4Ch
+	int 21h
+
 check_key:
 	mov ah, 00h
 	int 16h
-	cmp al, 'p' ; 'p' -> pause button
+	cmp al, 'p' ; pause key
 	je call_pause
 
-	cmp al, 'j'
+	cmp al, 'j' ; move the current piece left key
 	je call_move_left
 
-	cmp al, 'l'
+	cmp al, 'l' ; move the current piece left right
 	je call_move_right
+
+	cmp al, 'o' ; end the game
+	je call_end_game
 
 	jmp listen_keys
 
