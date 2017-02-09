@@ -63,7 +63,7 @@ myproc proc far ; name of the procedure myproc
 
 	; ---- graphics mode
 	mov ah, 00h ; prepare to define the graphical mode
-	mov al, 04h ; graphic mode 320x200 color mode
+	mov al, 13h ; graphic mode 320x200 color mode
 	int 10h ; 10h interruption
 
 	; ---- background
@@ -327,7 +327,7 @@ randompiece endp
 ; --- move a piece up
 move_up proc near
 move_up_loop:
-	mov color, 2
+	mov color, 0
 	mov ax, piece_x ; x coordinate
 	mov draw_x, ax
 	mov ax, piece_y ; y coordinate
@@ -626,7 +626,7 @@ draw_matrix_border_loop_left:
 draw_matrix_border endp
 
 move_left proc near
-	mov color, 2
+	mov color, 0
 	mov ax, piece_x ; x coordinate
 	mov draw_x, ax
 	mov ax, piece_y ; y coordinate
@@ -657,7 +657,7 @@ move_left proc near
 move_left endp
 
 move_right proc near
-		mov color, 2
+	mov color, 0
 	mov ax, piece_x ; x coordinate
 	mov draw_x, ax
 	mov ax, piece_y ; y coordinate
