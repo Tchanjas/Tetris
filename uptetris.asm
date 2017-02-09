@@ -504,11 +504,26 @@ call_pause:
 	call pause
 	jmp listen_keys
 
+call_move_left:
+	call move_left
+	jmp listen_keys
+
+call_move_right:
+	call move_right
+	jmp listen_keys
+
 check_key:
 	mov ah, 00h
 	int 16h
 	cmp al, 'p' ; 'p' -> pause button
 	je call_pause
+
+	cmp al, 'j'
+	je call_move_left
+
+	cmp al, 'l'
+	je call_move_right
+
 	jmp listen_keys
 
 ; if 60 seconds has passed, increase minute counter
@@ -609,6 +624,68 @@ draw_matrix_border_loop_left:
 
 	ret
 draw_matrix_border endp
+
+move_left proc near
+	mov color, 2
+	mov ax, piece_x ; x coordinate
+	mov draw_x, ax
+	mov ax, piece_y ; y coordinate
+	mov draw_y, ax
+	mov ax, piece_y_length ; height of the matrix
+	mov draw_y_length, ax
+	mov ax, piece_x_length ; width of the matrix
+	mov draw_x_length, ax
+	call draw
+
+	mov color, 3
+	; -------------
+	mov ax, piece_x
+	dec ax
+	mov piece_x, ax
+	mov draw_x, ax
+	; -------------
+
+	mov ax, piece_y
+	mov draw_y, ax
+	mov ax, piece_y_length ; height of the matrix
+	mov draw_y_length, ax
+	mov ax, piece_x_length ; width of the matrix
+	mov draw_x_length, ax
+	call draw
+
+	ret
+move_left endp
+
+move_right proc near
+		mov color, 2
+	mov ax, piece_x ; x coordinate
+	mov draw_x, ax
+	mov ax, piece_y ; y coordinate
+	mov draw_y, ax
+	mov ax, piece_y_length ; height of the matrix
+	mov draw_y_length, ax
+	mov ax, piece_x_length ; width of the matrix
+	mov draw_x_length, ax
+	call draw
+
+	mov color, 3
+	; -------------
+	mov ax, piece_x
+	inc ax
+	mov piece_x, ax
+	mov draw_x, ax
+	; -------------
+
+	mov ax, piece_y
+	mov draw_y, ax
+	mov ax, piece_y_length ; height of the matrix
+	mov draw_y_length, ax
+	mov ax, piece_x_length ; width of the matrix
+	mov draw_x_length, ax
+	call draw
+
+	ret
+move_right endp
 
 mycode ends ; end of the code segment
 end ; end of the program
