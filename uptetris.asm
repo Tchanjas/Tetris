@@ -25,12 +25,11 @@ matrix_x dw 10, '$' ; x coordinate
 matrix_y dw 10, '$' ; y coordinate
 
 ; declare the matrix pieces
-; every piece is 4x2
-piecelinefour db 1, 1, 1, 1, 0, 0, 0, 0, '$'
-piecelinetwo  db 1, 1, 0, 0, 0, 0, 0, 0, '$'
-piecelup      db 1, 0, 0, 0, 1, 1, 1, 0, '$'
-pieceldown    db 1, 1, 1, 0, 1, 0, 0, 0, '$'
-piecez        db 1, 1, 0, 0, 0, 1, 1, 0, '$'
+piecelinefour db 1, 1, 1, 1, '$'
+piecelinetwo  db 1, 1, '$'
+piecelup      db 1, 0, 0, 1, 1, 1, '$'
+pieceldown    db 1, 1, 1, 1, 0, 0, '$'
+piecez        db 1, 1, 0, 0, 1, 1, '$'
 
 ; declare piece coordinates and lengths
 piece_x_length  dw 4, '$' ; width
@@ -108,7 +107,7 @@ myproc proc far ; name of the procedure myproc
 	call piece_generator
 	;---------------------------------------------
 
-	; ---- back to de text mode
+	; ---- back to text mode
 	mov ah, 00h ; define the graphic mode
 	mov al, 02h ; text mode 80x25
 	int 10h
@@ -116,8 +115,9 @@ myproc proc far ; name of the procedure myproc
 	ret ; return the control to dos
 myproc endp ; end of the procedure myproc
 
+
 ;--------------------------------------
-;	PROCS
+;	PROCEDURES
 ;--------------------------------------
 
 ; procedure to pause/unpause the game
@@ -299,18 +299,38 @@ randompiece proc near
 
 loadlinefour:
 	lea ax, piecelinefour
+	mov bx, 4
+	mov piece_x_length, bx
+	mov bx, 1
+	mov piece_y_length, bx
 	jmp exit
 loadlinetwo:
 	lea ax, piecelinetwo
+	mov bx, 2
+	mov piece_x_length, bx
+	mov bx, 1
+	mov piece_y_length, bx
 	jmp exit
 loadlup:
 	lea ax, piecelup
+	mov bx, 3
+	mov piece_x_length, bx
+	mov bx, 2
+	mov piece_y_length, bx
 	jmp exit
 loadldown:
 	lea ax, pieceldown
+	mov bx, 3
+	mov piece_x_length, bx
+	mov bx, 2
+	mov piece_y_length, bx
 	jmp exit
 loadz:
 	lea ax, piecez
+	mov bx, 3
+	mov piece_x_length, bx
+	mov bx, 2
+	mov piece_y_length, bx
 	jmp exit
 
 exit:
@@ -366,7 +386,7 @@ move_up_loop:
 
 	mov ax, draw_y
 	cmp ax, matrix_y
-  jg move_up_loop
+  	jg move_up_loop
 move_up_hit:
   ret
 move_up endp
@@ -509,7 +529,7 @@ call_move_right:
 	jmp listen_keys
 
 call_end_game:
-	; ---- back to de text mode
+	; ---- back to text mode
 	mov ah, 00h ; define the graphic mode
 	mov al, 02h ; text mode 80x25
 	int 10h
@@ -591,7 +611,9 @@ convertNum endp
 
 draw_matrix_border proc near
 	mov cx, matrix_x
+	dec cx
 	mov dx, matrix_y
+	dec dx
 
 draw_matrix_border_loop_top:
 	mov al, color
@@ -619,6 +641,7 @@ draw_matrix_border_loop_bottom:
 	int 10h
 	dec cx
 	mov bx, matrix_x
+	dec bx
 	cmp cx, bx
 	jg draw_matrix_border_loop_bottom
 
@@ -628,6 +651,7 @@ draw_matrix_border_loop_left:
 	int 10h
 	dec dx
 	mov bx, matrix_y
+	dec bx
 	cmp dx, bx
 	jg draw_matrix_border_loop_left
 
@@ -635,8 +659,14 @@ draw_matrix_border_loop_left:
 draw_matrix_border endp
 
 move_left proc near
+	mov ax, piece_x
+	mov bx, 10
+	mul bx
+	cmp ax, matrix_x
+	jle move_left_end
+
 	mov color, 0
-	mov ax, piece_x ; x coordinate
+	mov ax, piece_x
 	mov draw_x, ax
 	mov ax, piece_y ; y coordinate
 	mov draw_y, ax
@@ -662,10 +692,19 @@ move_left proc near
 	mov draw_x_length, ax
 	call draw
 
+	move_left_end:
 	ret
 move_left endp
 
 move_right proc near
+	mov ax, piece_x
+	add ax, piece_x_length
+	mov bx, 10
+	mul bx
+	mov cx, 100
+	cmp ax, cx
+	jg move_right_end
+
 	mov color, 0
 	mov ax, piece_x ; x coordinate
 	mov draw_x, ax
@@ -693,6 +732,7 @@ move_right proc near
 	mov draw_x_length, ax
 	call draw
 
+	move_right_end:
 	ret
 move_right endp
 
