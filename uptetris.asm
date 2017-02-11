@@ -21,8 +21,8 @@ msg_clear db '      ', '$'
 matrix db 150 dup(0), '$'
 matrix_x_length dw 10, '$' ; width
 matrix_y_length dw 15, '$' ; height
-matrix_x dw 10, '$' ; x coordinate
-matrix_y dw 10, '$' ; y coordinate
+matrix_x dw 1, '$' ; x coordinate
+matrix_y dw 1, '$' ; y coordinate
 
 ; declare the matrix pieces
 piecelinefour db 1, 1, 1, 1, '$'
@@ -165,6 +165,7 @@ pause endp
 
 ; ---- generic procedure to draw a specified matrix object
 draw proc near
+	push bx
 	xor si, si
 	xor ax, ax
 	xor bx, bx
@@ -235,6 +236,7 @@ draw_continue:
 	mov bx, draw_y_length
 	cmp ax, bx
 	jl draw_loop
+	pop bx
 	ret
 draw endp
 
@@ -385,10 +387,11 @@ move_up_loop:
 	je move_up_hit
 
 	mov ax, draw_y
-	cmp ax, matrix_y
+	cmp ax, 10 ; matrix_y
   	jg move_up_loop
+	
 move_up_hit:
-  ret
+  	ret
 move_up endp
 
 ; ---- generate one piece at a time, move them up and put them in the matrix
@@ -408,9 +411,8 @@ piece_generator_loop:
 	call draw
 	call move_up
 	call save_piece
+	call check_lines
 
-	mov piece_x_length, 4
-	mov piece_y_length, 2
 	mov piece_x, 5
 	mov piece_y, 14
 
@@ -429,12 +431,12 @@ save_piece proc near
 
 save_piece_loop:
 	; get matrix index depending on the current piece block
-	mov ax, 9
+	mov ax, 10
 	mov bx, piece_y
-	sub bx, 1
+	dec bx
 	mul bx
 	mov bx, piece_x
-	sub bx, 1
+	dec bx
 	add ax, bx
 	add ax, si
 
@@ -442,27 +444,29 @@ save_piece_loop:
 	mov cx, ax
 	mov bx, draw_address
 	add bx, di
-	mov ax, [bx]
+	mov al, [bx]
 	mov bx, cx
 	mov matrix[bx], al
 
 	inc di
 	inc si
 
-	; if si is 3 means we will need to move y to +1
-	cmp si, 4
-	je save_piece_increasey
+	mov ax, piece_x_length
+	mul piece_y_length
+	dec ax
+	cmp di, ax
+	jg save_piece_end
 
-	cmp si, 13
-	jle save_piece_loop
-	ret
+	mov ax, di
+	div piece_x_length
+	cmp dx, 0 ; module
+	jne save_piece_loop
 
-; instead of adding +1 to y we can just add 7
-; which is the number of blocks to a new line
-; x length = 10, si = 4 => 10 - 4 = 6
-save_piece_increasey:
-	add si, 6
+	add si, 7
 	jmp save_piece_loop
+
+save_piece_end:
+ret
 save_piece endp
 
 ; --- delay procedure
@@ -610,10 +614,8 @@ dispx2:
 convertNum endp
 
 draw_matrix_border proc near
-	mov cx, matrix_x
-	dec cx
-	mov dx, matrix_y
-	dec dx
+	mov cx, 9 ; matrix_x - 1
+	mov dx, 9 ; matrix_y - 1 
 
 draw_matrix_border_loop_top:
 	mov al, color
@@ -621,7 +623,7 @@ draw_matrix_border_loop_top:
 	int 10h
 	inc cx
 	mov bx, 100
-	add bx, matrix_x
+	add bx, 10 ; matrix_x
 	cmp cx, bx
 	jl draw_matrix_border_loop_top
 
@@ -631,7 +633,7 @@ draw_matrix_border_loop_right:
 	int 10h
 	inc dx
 	mov bx, 150
-	add bx, matrix_y
+	add bx, 10 ; matrix_y
 	cmp dx, bx
 	jl draw_matrix_border_loop_right
 
@@ -640,7 +642,7 @@ draw_matrix_border_loop_bottom:
 	mov ah, 12 ; config int10h to the pixel plot
 	int 10h
 	dec cx
-	mov bx, matrix_x
+	mov bx, 10 ; matrix_x
 	dec bx
 	cmp cx, bx
 	jg draw_matrix_border_loop_bottom
@@ -650,7 +652,7 @@ draw_matrix_border_loop_left:
 	mov ah, 12 ; config int10h to the pixel plot
 	int 10h
 	dec dx
-	mov bx, matrix_y
+	mov bx, 10 ; matrix_y
 	dec bx
 	cmp dx, bx
 	jg draw_matrix_border_loop_left
@@ -662,7 +664,7 @@ move_left proc near
 	mov ax, piece_x
 	mov bx, 10
 	mul bx
-	cmp ax, matrix_x
+	cmp ax, 10
 	jle move_left_end
 
 	mov color, 0
@@ -735,6 +737,82 @@ move_right proc near
 	move_right_end:
 	ret
 move_right endp
+
+check_lines proc near
+	xor si, si
+	xor di, di
+	mov bx, 0
+
+check_lines_loop:
+	mov cx, 15
+	cmp bx, cx
+	jg check_lines_end
+	mov ax, bx
+	mov cx, 10
+	mul cx
+	mov si, ax
+	inc bx
+	
+	check_lines_loop2:
+		cmp matrix[si], 1
+		jne check_lines_loop
+		inc si
+		cmp si, 10 ; line length
+		jl check_lines_loop2
+		jge check_lines_eliminate
+
+check_lines_end:
+ret
+
+check_lines_eliminate:
+	; ---- draw the game matrix
+	mov color, 0
+	mov ax, offset matrix ; address of the matrix
+	mov draw_address, ax
+	mov ax, matrix_x ; x coordinate
+	mov draw_x, ax
+	mov ax, matrix_y ; y coordinate
+	mov draw_y, ax
+	mov ax, matrix_y_length ; height of the matrix
+	mov draw_y_length, ax
+	mov ax, matrix_x_length ; width of the matrix
+	mov draw_x_length, ax
+	call draw
+
+	mov ax, bx
+	mov cx, 10
+	mul cx
+	mov di, ax
+	sub di, 10
+
+	check_lines_loop3:
+		lea bx, matrix
+		mov si, di
+		add si, 10
+		add bx, si
+		mov cl, [bx]
+		mov bx, di
+		mov matrix[bx], cl
+
+		inc di
+		cmp di, 149
+		jne check_lines_loop3
+
+	; ---- draw the game matrix
+	mov color, 3
+	mov ax, offset matrix ; address of the matrix
+	mov draw_address, ax
+	mov ax, matrix_x ; x coordinate
+	mov draw_x, ax
+	mov ax, matrix_y ; y coordinate
+	mov draw_y, ax
+	mov ax, matrix_y_length ; height of the matrix
+	mov draw_y_length, ax
+	mov ax, matrix_x_length ; width of the matrix
+	mov draw_x_length, ax
+	call draw
+ret
+check_lines endp
 
 mycode ends ; end of the code segment
 end ; end of the program
