@@ -62,7 +62,7 @@ draw_y dw 0, '$'
 draw_block_x dw 0, '$'
 draw_block_y dw 0, '$'
 
-color db 3, '$' ; green
+color db 3, '$' ; blue
 
 mydata ends
 
@@ -115,17 +115,15 @@ myproc proc far ; name of the procedure myproc
 	mov draw_x_length, ax
 	call draw
 
-	;---------------------------------------------
+	; ---- obtain the current seconds of the time
  	call get_time
 	mov msg_sec_num, dh
-	;---------------------------------------------
 
 	; ---- draw the game matrix border
 	call draw_matrix_border
-	; ---- generate one piece at a time and move them
-	;---------------------------------------------
+
+	; ---- generate one piece at a time, random, and move them
 	call piece_generator
-	;---------------------------------------------
 
 	; ---- back to text mode
 	mov ah, 00h ; define the graphic mode
@@ -139,6 +137,8 @@ myproc endp ; end of the procedure myproc
 ;--------------------------------------
 ;	PROCEDURES
 ;--------------------------------------
+
+; ---- procedure to get the current time
 get_time proc near
 	; --- get starting timestamp
 	; --- dh => seconds
@@ -147,7 +147,7 @@ get_time proc near
 	ret
 get_time endp
 
-; procedure to pause/unpause the game
+; ---- procedure to pause/unpause the game
 pause proc near
 	push ax
 
@@ -522,6 +522,7 @@ save_piece_end:
 ret
 save_piece endp
 
+; ---- print the minutes and seconds of the elapsed time since the start of the game
 print_chrono proc near
 	mov dl, 15
 	mov dh, 5
@@ -594,6 +595,7 @@ inc_minutes:
 	jmp chrono_out
 print_chrono endp
 
+; ---- print the number of lines eliminated
 print_lines proc near
 	mov dl, 15
 	mov dh, 6
@@ -706,6 +708,7 @@ stop_delay:
 	ret
 delay endp
 
+; ---- procedure to rotate the current piece
 rotate_piece proc near
 	mov color, 0
 	mov ax, piece_x
@@ -782,6 +785,7 @@ rotate_piece_end:
 ret
 rotate_piece endp
 
+; ---- procedure to rotate the current piece if it's of the type 2
 rotate_piece_type_2 proc near
 	mov ax, pieceState
 	cmp ax, 0
@@ -835,6 +839,7 @@ rotate_piece_type_2_address:
 	ret
 rotate_piece_type_2 endp
 
+; ---- procedure to rotate the current piece if it's of the type 3
 rotate_piece_type_3 proc near
 	mov ax, pieceState
 	cmp ax, 0
@@ -888,6 +893,7 @@ rotate_piece_type_3_address:
 	ret
 rotate_piece_type_3 endp
 
+; ---- procedure to rotate the current piece if it's of the type 4
 rotate_piece_type_4 proc near
 	mov ax, pieceState
 	cmp ax, 0
@@ -941,7 +947,7 @@ rotate_piece_type_4_address:
 	ret
 rotate_piece_type_4 endp
 
-; procedure to convert a numeric value on AX to ascii and print it
+; ---- procedure to convert a numeric value on AX to ascii and print it
 convertNum proc near
 	push dx
 	push cx
@@ -975,6 +981,7 @@ dispx2:
 	ret
 convertNum endp
 
+; ---- draw the border of the game matrix
 draw_matrix_border proc near
 	mov cx, 9 ; matrix_x - 1
 	mov dx, 9 ; matrix_y - 1
@@ -1022,6 +1029,7 @@ draw_matrix_border_loop_left:
 	ret
 draw_matrix_border endp
 
+; ---- move current piece to left
 move_left proc near
 	mov ax, piece_x
 	mov bx, 10
@@ -1060,6 +1068,7 @@ move_left proc near
 	ret
 move_left endp
 
+; ---- move current piece to the right
 move_right proc near
 	mov ax, piece_x
 	add ax, piece_x_length
@@ -1100,6 +1109,7 @@ move_right proc near
 	ret
 move_right endp
 
+; ---- check if a line is full, if true remove it
 check_lines proc near
 	xor si, si
 	xor di, di

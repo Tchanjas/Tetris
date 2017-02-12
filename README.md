@@ -7,5 +7,5 @@
 * [x] information about the time elapsed (minutes and seconds)
 * [x] pause the game
 * [x] number of lines eliminated
-* [x] key movement
-* [ ] mouse movement
+* [x] keyboard (j - move piece to left, l - move piece to right, i - rotate piece, k - accelarate piece movement, p - pause, q - quit)
+* [x] mouse (left mouse - rotate piece)
