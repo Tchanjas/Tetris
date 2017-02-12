@@ -27,9 +27,23 @@ matrix_y dw 1, '$' ; y coordinate
 ; declare the matrix pieces
 piecelinefour db 1, 1, 1, 1, '$'
 piecelinetwo  db 1, 1, '$'
+
 piecelup      db 1, 0, 0, 1, 1, 1, '$'
+piecelup90    db 1, 1, 1, 0, 1, 0, '$'
+piecelup180   db 1, 1, 1, 0, 0, 1, '$'
+piecelup270   db 0, 1, 0, 1, 1, 1, '$'
+
 pieceldown    db 1, 1, 1, 1, 0, 0, '$'
+pieceldown90  db 1, 1, 0, 1, 0, 1, '$'
+pieceldown180 db 0, 0, 1, 1, 1, 1, '$'
+pieceldown270 db 1, 0, 1, 0, 1, 1, '$'
+
 piecez        db 1, 1, 0, 0, 1, 1, '$'
+piecez90      db 0, 1, 1, 1, 1, 0, '$'
+
+pieceType dw ?, '$'
+pieceState dw 0, '$'
+
 
 ; declare piece coordinates and lengths
 piece_x_length  dw 4, '$' ; width
@@ -300,39 +314,19 @@ randompiece proc near
 	je loadz
 
 loadlinefour:
-	lea ax, piecelinefour
-	mov bx, 4
-	mov piece_x_length, bx
-	mov bx, 1
-	mov piece_y_length, bx
+  	call piecelinefourCombs
 	jmp exit
 loadlinetwo:
-	lea ax, piecelinetwo
-	mov bx, 2
-	mov piece_x_length, bx
-	mov bx, 1
-	mov piece_y_length, bx
+	call piecelinetwoCombs
 	jmp exit
 loadlup:
-	lea ax, piecelup
-	mov bx, 3
-	mov piece_x_length, bx
-	mov bx, 2
-	mov piece_y_length, bx
+	call piecelupCombs
 	jmp exit
 loadldown:
-	lea ax, pieceldown
-	mov bx, 3
-	mov piece_x_length, bx
-	mov bx, 2
-	mov piece_y_length, bx
+	call pieceldownCombs
 	jmp exit
 loadz:
-	lea ax, piecez
-	mov bx, 3
-	mov piece_x_length, bx
-	mov bx, 2
-	mov piece_y_length, bx
+	call piecezCombs
 	jmp exit
 
 exit:
@@ -341,6 +335,51 @@ exit:
 	pop bx
 	ret
 randompiece endp
+
+piecelinefourCombs proc near
+    lea ax, piecelinefour
+    mov piece_x_length, 4
+    mov piece_y_length, 1
+    mov pieceType, 0
+    mov pieceState, 1
+    ret
+piecelinefourCombs endp
+ 
+piecelinetwoCombs proc near
+    lea ax, piecelinetwo
+    mov piece_x_length, 2
+    mov piece_y_length, 1
+    mov pieceType, 1
+    mov pieceState, 1
+    ret
+piecelinetwoCombs endp
+ 
+piecelupCombs proc near
+	lea ax, piecelup
+    mov piece_x_length, 3
+    mov piece_y_length, 2
+    mov pieceType, 2
+    mov pieceState, 1
+    ret
+piecelupCombs endp
+ 
+pieceldownCombs proc near
+	lea ax, pieceldown
+    mov piece_x_length, 3
+    mov piece_y_length, 2
+    mov pieceType, 3
+    mov pieceState, 1
+    ret
+pieceldownCombs endp
+ 
+piecezCombs proc near
+	lea ax, piecez
+    mov piece_x_length, 3
+    mov piece_y_length, 2
+    mov pieceType, 4
+    mov pieceState, 1
+    ret
+piecezCombs endp
 
 ; --- move a piece up
 move_up proc near
@@ -389,7 +428,7 @@ move_up_loop:
 	mov ax, draw_y
 	cmp ax, 10 ; matrix_y
   	jg move_up_loop
-	
+
 move_up_hit:
   	ret
 move_up endp
@@ -532,6 +571,10 @@ call_move_right:
 	call move_right
 	jmp listen_keys
 
+call_rotate:
+	call rotate_piece
+	jmp listen_keys
+
 call_end_game:
 	; ---- back to text mode
 	mov ah, 00h ; define the graphic mode
@@ -554,8 +597,11 @@ check_key:
 	cmp al, 'l' ; move the current piece left right
 	je call_move_right
 
-	cmp al, 'o' ; end the game
+	cmp al, 'q' ; end the game
 	je call_end_game
+
+	cmp al, 'i' ; rotate the current piece
+	je call_rotate
 
 	jmp listen_keys
 
@@ -578,6 +624,241 @@ stop_delay:
 	pop dx
 	ret
 delay endp
+
+rotate_piece proc near
+	mov color, 0
+	mov ax, piece_x
+	mov draw_x, ax
+	mov ax, piece_y ; y coordinate
+	mov draw_y, ax
+	mov ax, piece_y_length ; height of the matrix
+	mov draw_y_length, ax
+	mov ax, piece_x_length ; width of the matrix
+	mov draw_x_length, ax
+	call draw
+
+	mov color, 3
+
+	mov ax, pieceType
+	cmp ax, 0
+	jne rotate_piece_cmp1
+		rotate_piece_type_0:
+			mov ax, piece_x_length
+			mov cx, ax
+		    mov bx, piece_y_length
+		    mov dx, bx
+		    mov piece_x_length, dx
+		    mov piece_y_length, cx
+			mov draw_x_length, dx
+			mov draw_y_length, cx
+			lea ax, piecelinefour
+			jmp rotate_piece_address
+
+	rotate_piece_cmp1:
+	cmp ax, 1
+	jne rotate_piece_cmp2
+		rotate_piece_type_1:
+			mov ax, piece_x_length
+			mov cx, ax
+		    mov bx, piece_y_length
+		    mov dx, bx
+		    mov piece_x_length, dx
+		    mov piece_y_length, cx
+			mov draw_x_length, dx
+			mov draw_y_length, cx
+			lea ax, piecelinetwo
+			jmp rotate_piece_address
+
+	rotate_piece_cmp2:
+	cmp ax, 2
+	jne rotate_piece_cmp3
+	call rotate_piece_type_2
+	ret
+
+	rotate_piece_cmp3:
+	cmp ax, 3
+	jne rotate_piece_cmp4
+	call rotate_piece_type_3
+	ret
+
+	rotate_piece_cmp4:
+	cmp ax, 4
+	jne rotate_piece_end
+	call rotate_piece_type_4
+	ret
+	
+	rotate_piece_address:
+	mov draw_address, ax
+
+	mov ax, piece_x
+	mov draw_x, ax
+	mov ax, piece_y
+	mov draw_y, ax
+
+	call draw
+	call delay
+rotate_piece_end:
+ret
+rotate_piece endp
+
+rotate_piece_type_2 proc near
+	mov ax, pieceState
+	cmp ax, 0
+	je rotate_piece_type_2_state_0
+	cmp ax, 1
+	je rotate_piece_type_2_state_1
+	cmp ax, 2
+	je rotate_piece_type_2_state_2
+	cmp ax, 3
+	je rotate_piece_type_2_state_3
+
+	rotate_piece_type_2_state_0:
+	mov pieceState, 1
+	lea ax, piecelup
+	jmp rotate_piece_type_2_address
+
+	rotate_piece_type_2_state_1:
+	mov pieceState, 2
+	lea ax, piecelup90
+	jmp rotate_piece_type_2_address
+
+	rotate_piece_type_2_state_2:
+	mov pieceState, 3
+	lea ax, piecelup180
+	jmp rotate_piece_type_2_address
+
+	rotate_piece_type_2_state_3:
+	mov pieceState, 0
+	lea ax, piecelup270
+	jmp rotate_piece_type_2_address
+
+rotate_piece_type_2_address:
+	mov draw_address, ax
+
+	mov ax, piece_x_length
+	mov cx, ax
+    mov bx, piece_y_length
+    mov dx, bx
+    mov piece_x_length, dx
+    mov piece_y_length, cx
+	mov draw_x_length, dx
+	mov draw_y_length, cx
+
+	mov ax, piece_x
+	mov draw_x, ax
+	mov ax, piece_y
+	mov draw_y, ax
+
+	call draw
+	call delay
+	ret
+rotate_piece_type_2 endp
+
+rotate_piece_type_3 proc near
+	mov ax, pieceState
+	cmp ax, 0
+	je rotate_piece_type_3_state_0
+	cmp ax, 1
+	je rotate_piece_type_3_state_1
+	cmp ax, 2
+	je rotate_piece_type_3_state_2
+	cmp ax, 3
+	je rotate_piece_type_3_state_3
+
+	rotate_piece_type_3_state_0:
+	mov pieceState, 1
+	lea ax, pieceldown
+	jmp rotate_piece_type_3_address
+
+	rotate_piece_type_3_state_1:
+	mov pieceState, 2
+	lea ax, pieceldown90
+	jmp rotate_piece_type_3_address
+
+	rotate_piece_type_3_state_2:
+	mov pieceState, 3
+	lea ax, pieceldown180
+	jmp rotate_piece_type_3_address
+
+	rotate_piece_type_3_state_3:
+	mov pieceState, 0
+	lea ax, pieceldown270
+	jmp rotate_piece_type_3_address
+
+rotate_piece_type_3_address:
+	mov draw_address, ax
+
+	mov ax, piece_x_length
+	mov cx, ax
+    mov bx, piece_y_length
+    mov dx, bx
+    mov piece_x_length, dx
+    mov piece_y_length, cx
+	mov draw_x_length, dx
+	mov draw_y_length, cx
+
+	mov ax, piece_x
+	mov draw_x, ax
+	mov ax, piece_y
+	mov draw_y, ax
+
+	call draw
+	call delay
+	ret
+rotate_piece_type_3 endp
+
+rotate_piece_type_4 proc near
+	mov ax, pieceState
+	cmp ax, 0
+	je rotate_piece_type_4_state_0
+	cmp ax, 1
+	je rotate_piece_type_4_state_1
+	cmp ax, 2
+	je rotate_piece_type_4_state_2
+	cmp ax, 3
+	je rotate_piece_type_4_state_3
+
+	rotate_piece_type_4_state_0:
+	mov pieceState, 1
+	lea ax, piecez
+	jmp rotate_piece_type_4_address
+
+	rotate_piece_type_4_state_1:
+	mov pieceState, 2
+	lea ax, piecez90
+	jmp rotate_piece_type_4_address
+
+	rotate_piece_type_4_state_2:
+	mov pieceState, 3
+	lea ax, piecez
+	jmp rotate_piece_type_4_address
+
+	rotate_piece_type_4_state_3:
+	mov pieceState, 0
+	lea ax, piecez90
+	jmp rotate_piece_type_4_address
+
+rotate_piece_type_4_address:
+	mov draw_address, ax
+
+	mov ax, piece_x_length
+	mov cx, ax
+    mov bx, piece_y_length
+    mov dx, bx
+    mov piece_x_length, dx
+    mov piece_y_length, cx
+	mov draw_x_length, dx
+	mov draw_y_length, cx
+
+	mov ax, piece_x
+	mov draw_x, ax
+	mov ax, piece_y
+	mov draw_y, ax
+
+	call draw
+	call delay
+	ret
+rotate_piece_type_4 endp
 
 ; procedure to convert a numeric value on AX to ascii and print it
 convertNum proc near
@@ -615,7 +896,7 @@ convertNum endp
 
 draw_matrix_border proc near
 	mov cx, 9 ; matrix_x - 1
-	mov dx, 9 ; matrix_y - 1 
+	mov dx, 9 ; matrix_y - 1
 
 draw_matrix_border_loop_top:
 	mov al, color
@@ -752,7 +1033,7 @@ check_lines_loop:
 	mul cx
 	mov si, ax
 	inc bx
-	
+
 	check_lines_loop2:
 		cmp matrix[si], 1
 		jne check_lines_loop
