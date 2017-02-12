@@ -6,6 +6,6 @@
 * [x] collision
 * [x] information about the time elapsed (minutes and seconds)
 * [x] pause the game
-* [ ] number of lines eliminated
-* [ ] key movement -> **missing acceleration**
+* [x] number of lines eliminated
+* [x] key movement
 * [ ] mouse movement

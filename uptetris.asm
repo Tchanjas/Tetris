@@ -594,6 +594,22 @@ inc_minutes:
 	jmp chrono_out
 print_chrono endp
 
+print_lines proc near
+	mov dl, 15
+	mov dh, 6
+	mov ah, 02h
+	mov bh, 0
+	int 10h
+	lea dx, msg_lines_txt
+	mov ah, 09h
+	int 21h
+
+	xor ax, ax
+	mov al, msg_lines_num
+	call convertNum
+	ret
+print_lines endp
+
 jump_up proc near
 	mov tick_time, 1
 	ret
@@ -614,6 +630,7 @@ timer:
 
 printInfo:
 	call print_chrono
+	call print_lines
 
 ; listens for keyboard inputs
 listen_keys:
@@ -1103,6 +1120,8 @@ check_lines_end:
 ret
 
 check_lines_eliminate:
+	inc msg_lines_num
+
 	; ---- draw the game matrix
 	mov color, 0
 	mov ax, offset matrix ; address of the matrix
