@@ -5,6 +5,7 @@ stack ends
 mydata segment para 'data'
 db 64 dup('mystack')
 wait_time dw 1
+tick_time dw 18
 
 msg_title db 'up_tetris', '$'
 msg_lines_txt db 'lines eliminated: ', '$'
@@ -114,6 +115,11 @@ myproc proc far ; name of the procedure myproc
 	mov draw_x_length, ax
 	call draw
 
+	;---------------------------------------------
+ 	call get_time
+	mov msg_sec_num, dh
+	;---------------------------------------------
+
 	; ---- draw the game matrix border
 	call draw_matrix_border
 	; ---- generate one piece at a time and move them
@@ -133,6 +139,13 @@ myproc endp ; end of the procedure myproc
 ;--------------------------------------
 ;	PROCEDURES
 ;--------------------------------------
+get_time proc near
+	; --- get starting timestamp
+	; --- dh => seconds
+	mov ah, 2ch
+	int 21h
+	ret
+get_time endp
 
 ; procedure to pause/unpause the game
 pause proc near
@@ -287,6 +300,7 @@ randompiece proc near
 	push bx
 	push cx
 	push dx
+	mov tick_time, 18
 	xor ax, ax
 	; --- system time cx:dx
 	mov ah, 00h
@@ -344,7 +358,7 @@ piecelinefourCombs proc near
     mov pieceState, 1
     ret
 piecelinefourCombs endp
- 
+
 piecelinetwoCombs proc near
     lea ax, piecelinetwo
     mov piece_x_length, 2
@@ -353,7 +367,7 @@ piecelinetwoCombs proc near
     mov pieceState, 1
     ret
 piecelinetwoCombs endp
- 
+
 piecelupCombs proc near
 	lea ax, piecelup
     mov piece_x_length, 3
@@ -362,7 +376,7 @@ piecelupCombs proc near
     mov pieceState, 1
     ret
 piecelupCombs endp
- 
+
 pieceldownCombs proc near
 	lea ax, pieceldown
     mov piece_x_length, 3
@@ -371,7 +385,7 @@ pieceldownCombs proc near
     mov pieceState, 1
     ret
 pieceldownCombs endp
- 
+
 piecezCombs proc near
 	lea ax, piecez
     mov piece_x_length, 3
@@ -508,36 +522,15 @@ save_piece_end:
 ret
 save_piece endp
 
-; --- delay procedure
-delay proc near
-	push dx
-	push cx
-
-timer:
-	mov ah, 00h
-	int 1ah
-	cmp dx, wait_time
-	jb timer
-	add dx, 18 ; 1-18, where smaller is faster and 18 is close to 1 second
-	mov wait_time,dx
-
-	inc msg_sec_num
-	cmp msg_sec_num, 60; check if 60 seconds has passed
-	je somaMin
-
-printInfo:
+print_chrono proc near
 	mov dl, 15
-	mov dh, 4
+	mov dh, 5
 	mov ah, 02h
 	mov bh, 0
 	int 10h
-
-	lea dx, msg_min_txt
+	lea dx, msg_clear
 	mov ah, 09h
 	int 21h
-	xor ax, ax
-	mov al, msg_min_num
-	call convertNum
 
 	mov dl, 15
 	mov dh, 5
@@ -548,9 +541,79 @@ printInfo:
 	lea dx, msg_sec_txt
 	mov ah, 09h
 	int 21h
-	xor ax,ax
-	mov al, msg_sec_num
+
+	call get_time
+	cmp dh, msg_sec_num
+	jb correct_sec
+
+show_time:
+	; -- seconds
+	sub dh, msg_sec_num
+	xor ax, ax
+	mov al, dh
 	call convertNum
+
+	cmp dh, 59
+	je inc_minutes
+
+	mov dl, 15
+	mov dh, 4
+	mov ah, 02h
+	mov bh, 0
+	int 10h
+	lea dx, msg_clear
+	mov ah, 09h
+	int 21h
+
+	; -- minutes
+	mov dl, 15
+	mov dh, 4
+	mov ah, 02h
+	mov bh, 0
+	int 10h
+
+	lea dx, msg_min_txt
+	mov ah, 09h
+	int 21h
+
+	xor ax, ax
+	mov al, msg_min_num
+	call convertNum
+
+chrono_out:
+	ret
+
+correct_sec:
+	xor ax, ax
+	mov ah, 60
+	add dh, ah
+	jmp show_time
+
+inc_minutes:
+	inc msg_min_num
+	jmp chrono_out
+print_chrono endp
+
+jump_up proc near
+	mov tick_time, 1
+	ret
+jump_up endp
+
+; --- delay procedure
+delay proc near
+	push dx
+	push cx
+
+timer:
+	mov ah, 00h
+	int 1ah
+	cmp dx, wait_time
+	jb timer
+	add dx, tick_time ; 1-18, where smaller is faster and 18 is close to 1 second
+	mov wait_time,dx
+
+printInfo:
+	call print_chrono
 
 ; listens for keyboard inputs
 listen_keys:
@@ -573,6 +636,10 @@ call_move_right:
 
 call_rotate:
 	call rotate_piece
+	jmp listen_keys
+
+call_jump_up:
+	call jump_up
 	jmp listen_keys
 
 call_end_game:
@@ -603,40 +670,10 @@ check_key:
 	cmp al, 'i' ; rotate the current piece
 	je call_rotate
 
+	cmp al, 'k' ; jump to top
+	je call_jump_up
+
 	jmp listen_keys
-
-; if 60 seconds has passed, increase minute counter
-; and reset second counter
-somaMin:
-	mov msg_sec_num, 0
-
-	mov dl, 15
-	mov dh, 5
-	mov ah, 02h
-	mov bh, 0
-	int 10h
-	lea dx, msg_clear
-	mov ah, 09h
-	int 21h
-
-	inc msg_min_num
-	cmp msg_min_num, 60
-	je resetTimer
-	jmp printInfo
-
-; reset minute counter to 0 case 60 min
-resetTimer:
-	mov msg_min_num, 0
-
-	mov dl, 15
-	mov dh, 4
-	mov ah, 02h
-	mov bh, 0
-	int 10h
-	lea dx, msg_clear
-	mov ah, 09h
-	int 21h
-
 	jmp printInfo
 
 stop_delay:
@@ -706,7 +743,7 @@ rotate_piece proc near
 	jne rotate_piece_end
 	call rotate_piece_type_4
 	ret
-	
+
 	rotate_piece_address:
 	mov draw_address, ax
 
