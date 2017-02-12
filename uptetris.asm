@@ -14,7 +14,7 @@ msg_min_num db 0, '$'
 msg_sec_txt db 'seconds: ', '$'
 msg_sec_num db 0, '$'
 msg_paused db 'paused', '$'
-msg_clear db '      ', '$'
+msg_clear db '            ', '$'
 
 ; game matrix is 10 columns and 15 lines
 ; that gives us 150 blocks with 10 pixels of width and height for each block
@@ -525,7 +525,7 @@ timer:
 	cmp msg_sec_num, 60; check if 60 seconds has passed
 	je somaMin
 
-printClock:
+printInfo:
 	mov dl, 15
 	mov dh, 4
 	mov ah, 02h
@@ -609,15 +609,35 @@ check_key:
 ; and reset second counter
 somaMin:
 	mov msg_sec_num, 0
+
+	mov dl, 15
+	mov dh, 5
+	mov ah, 02h
+	mov bh, 0
+	int 10h
+	lea dx, msg_clear
+	mov ah, 09h
+	int 21h
+
 	inc msg_min_num
 	cmp msg_min_num, 60
 	je resetTimer
-	jmp printClock
+	jmp printInfo
 
 ; reset minute counter to 0 case 60 min
 resetTimer:
 	mov msg_min_num, 0
-	jmp printClock
+
+	mov dl, 15
+	mov dh, 4
+	mov ah, 02h
+	mov bh, 0
+	int 10h
+	lea dx, msg_clear
+	mov ah, 09h
+	int 21h
+
+	jmp printInfo
 
 stop_delay:
 	pop cx
