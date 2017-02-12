@@ -621,6 +621,13 @@ delay proc near
 	push cx
 
 timer:
+; -- Check for mouse button presses
+	mov al, 05h
+	mov bx, 0 ; left mouse
+	int 33h
+	cmp bx, 0
+	jg call_rotate
+
 	mov ah, 00h
 	int 1ah
 	cmp dx, wait_time
@@ -631,12 +638,6 @@ timer:
 printInfo:
 	call print_chrono
 	call print_lines
-
-; -- Check for mouse button presses
-	mov ax, 3
-	int 33h
-	cmp bx, 1 ; 1 => left mouse button
-	je call_rotate
 
 ; listens for keyboard inputs
 listen_keys:
