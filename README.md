@@ -1,5 +1,9 @@
 # Tetris
 
+A tetris game made in assembly where the pieces go up instead of down
+
+![Screenshot](screenshots/screenshot.png "Screenshot")
+
 * [x] graphic mode 320x200, 256 colors
 * [x] random generated blocks and go up
 * [x] several pieces
